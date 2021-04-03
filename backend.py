@@ -1,23 +1,15 @@
 import threading
 import queue
 import logging
-from utils import synchronised
+from utils import synchronized_with_attr
 
 bthread = None
 
 logger = logging.getLogger(__name__)
 
-@synchronised
-def get_backend():
-  global bthread
-  print(bthread)
-  if not bthread:
-    logger.info("Getting instance of backend...")
-    bthead = BackendThread(tname="backend")
-  logger.info("Returning backend")
-  return bthead
-
 class BackendThread(threading.Thread):
+
+  instance = None
 
   def __init__(self, tname):
     super(BackendThread, self).__init__(name=tname)
@@ -25,7 +17,17 @@ class BackendThread(threading.Thread):
     self.in_queue = queue.Queue()
     self.out_queues = []
     self.stoprequest = threading.Event()
+    self.lock = threading.RLock()
   
+  @staticmethod
+  @synchronised
+  def create_instance():
+    logger.info("In create_instance")
+    if not BackendThread.instance:
+      logger.info("Instance is not initialised, so creating")
+      BackendThread.instance = BackendThread(tname="backend")
+    
+
   def listen(self):
     q = queue.Queue(maxsize=5)
     self.out_queues.append(5)
