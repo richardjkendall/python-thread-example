@@ -4,50 +4,38 @@ import logging
 from utils import synchronized_with_attr
 
 bthread = None
-
 logger = logging.getLogger(__name__)
 
-class BackendThread(threading.Thread):
+class Backend(object):
 
   instance = None
+  lock = threading.Lock()
 
-  def __init__(self, tname):
-    super(BackendThread, self).__init__(name=tname)
-    self.tname = tname
-    self.in_queue = queue.Queue()
+  def __init__(self):
     self.out_queues = []
     self.stoprequest = threading.Event()
-    self.lock = threading.RLock()
   
   @staticmethod
-  @synchronised
   def create_instance():
     logger.info("In create_instance")
-    if not BackendThread.instance:
-      logger.info("Instance is not initialised, so creating")
-      BackendThread.instance = BackendThread(tname="backend")
-    
+    with Backend.lock:
+      if not Backend.instance:
+        logger.info("Instance is not initialised, so creating")
+        Backend.instance = Backend()
+      return Backend.instance
 
   def listen(self):
+    logger.info("Listening...")
     q = queue.Queue(maxsize=5)
-    self.out_queues.append(5)
+    self.out_queues.append(q)
     return q
 
   def send(self, message):
-    self.in_queue.put_nowait(message)
-
-  def run(self):
-    while not self.stoprequest.isSet():
+    logger.info("In send method")
+    for i in reversed(range(len(self.out_queues))):
       try:
-        msg = self.in_queue.get(True, 0.05)
-        for i in reversed(range(len(self.out_queues))):
-          try:
-            self.out_queues[i].put_nowait(msg)
-          except:
-            del self.out_queues[i]
-      except queue.Empty:
-        continue
-  
-  def join(self, timeout=None):
-    self.stoprequest.set()
-    super(BackendThread, self).join(timeout)
+        logger.info("Putting message on queue")
+        self.out_queues[i].put_nowait(message)
+      except:
+        del self.out_queues[i]
+    logger.info("Send method complete")
