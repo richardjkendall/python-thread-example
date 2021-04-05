@@ -32,10 +32,13 @@ class Backend(object):
 
   def send(self, message):
     logger.info("In send method")
-    for i in reversed(range(len(self.out_queues))):
+    logger.info(f"Got message {message}")
+    logger.info(f"Self details {self}")
+    for i in reversed(range(len(Backend.instance.out_queues))):
       try:
         logger.info("Putting message on queue")
-        self.out_queues[i].put_nowait(message)
+        Backend.instance.out_queues[i].put_nowait(message)
       except:
+        logger.info("Removing full queue")
         del self.out_queues[i]
     logger.info("Send method complete")

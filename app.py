@@ -1,12 +1,12 @@
 import logging
-import atexit
-import json
 from flask import Flask, request, Response, make_response
 from flask_cors import CORS
 from backend import Backend
 from utils import format_sse, success_json_response
+from sqsbackend import get_backend
 
 app = Flask(__name__)
+app.config.setdefault('RABMQ_RABBITMQ_URL', 'amqp://localhost')
 CORS(app)
 
 logger = logging.getLogger(__name__)
@@ -20,10 +20,12 @@ def root():
     "status": "okay"
   })
 
+"""
 @app.route("/send", methods=["POST"])
 def send():
   logger.info("In send method...")
   bend = Backend.create_instance()
+  logger.info(f"Backend instance {bend}")
   if request.json:
     logger.info("Request is JSON")
     if "message" in request.json:
@@ -41,13 +43,22 @@ def send():
     return success_json_response({
       "error": "not a JSON request"
     })
+"""
+
+"""
+def send_from_mq(body):
+  logger.info("In send from MQ method...")
+  bend = Backend.create_instance()
+  logger.info(f"Backend instance {bend}")
+  bend.send(body)
+  return True
+"""
 
 @app.route("/event", methods=["GET"])
 def listen():
   logger.info("In event method...")
-  bend = Backend.create_instance()
   def stream():
-    q = bend.listen()
+    q = get_backend().listen()
     logger.info("Got queue to listen to...")
     while True:
       logging.info("Waiting for message")

@@ -1,16 +1,20 @@
+from gevent import monkey
+monkey.patch_all()
+
 import logging
+import atexit
 from gunicorn.app.base import Application, Config
 from app import app
-from backend import Backend
-
+#from backend import Backend
+from sqsbackend import get_backend
+from gevent import Greenlet
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] (%(threadName)-10s) %(message)s")
 logger = logging.getLogger(__name__)
 
-bend = None
+SqsThread = None
 
 class GUnicornFlaskApplication(Application):
-    
   def __init__(self, app):
     self.usage, self.callable, self.prog, self.app = None, None, None, app
     
@@ -21,9 +25,42 @@ class GUnicornFlaskApplication(Application):
 
   load = lambda self:self.app
 
+def create_sqs_l():
+  #app = source_app
+
+  def interrupt():
+    global sqs_g
+    #logger.info("Cleaning up SQS thread...")
+    #sqs_g.join(timeout=2)
+  
+  def start():
+    logger.info("In start method...")
+    global sqs_g 
+    sqs_g = Greenlet(get_backend().run)
+    #sqs_g.start()
+    
+  start()
+  #atexit.register(interrupt)
+  #return app
+
+def starting(worker):
+  logger.info("on_starting called")
+  global sqs_g 
+  sqs_g = Greenlet(get_backend().run)
+  sqs_g.start()
+
+def stopping(server, worker):
+  logger.info("on_exit called")
+  global sqs_g
+  sqs_g.join(timeout=2)
+
 if __name__ == "__main__":
-  bend = Backend.create_instance()
+  #create_sqs_l()
+  #app = create_app()
   g_app = GUnicornFlaskApplication(app)
   g_app.run(
-    worker_class="gevent"
+    worker_class="gevent",
+    workers=1,
+    post_worker_init=starting,
+    worker_exit=stopping
   )
