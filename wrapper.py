@@ -2,10 +2,8 @@ from gevent import monkey
 monkey.patch_all()
 
 import logging
-import atexit
 from gunicorn.app.base import Application, Config
 from app import app
-#from backend import Backend
 from sqsbackend import get_backend
 from gevent import Greenlet
 
@@ -25,24 +23,6 @@ class GUnicornFlaskApplication(Application):
 
   load = lambda self:self.app
 
-def create_sqs_l():
-  #app = source_app
-
-  def interrupt():
-    global sqs_g
-    #logger.info("Cleaning up SQS thread...")
-    #sqs_g.join(timeout=2)
-  
-  def start():
-    logger.info("In start method...")
-    global sqs_g 
-    sqs_g = Greenlet(get_backend().run)
-    #sqs_g.start()
-    
-  start()
-  #atexit.register(interrupt)
-  #return app
-
 def starting(worker):
   logger.info("on_starting called")
   global sqs_g 
@@ -55,8 +35,6 @@ def stopping(server, worker):
   sqs_g.join(timeout=2)
 
 if __name__ == "__main__":
-  #create_sqs_l()
-  #app = create_app()
   g_app = GUnicornFlaskApplication(app)
   g_app.run(
     worker_class="gevent",

@@ -1,10 +1,11 @@
-#import queue
 import logging
 import boto3
-#import json
+
 from gevent.queue import Queue
 from gevent.event import Event
 from gevent.lock import BoundedSemaphore
+
+from decouple import config
 
 sqs = boto3.client("sqs")
 logger = logging.getLogger(__name__)
@@ -14,7 +15,6 @@ lock = BoundedSemaphore(1)
 class SqsBackend():
 
   def __init__(self, queueurl):
-    #super(SqsBackend, self).__init__()
     self.out_queues = []
     self.queueurl = queueurl
     self.stoprequest = Event()
@@ -42,8 +42,6 @@ class SqsBackend():
         for message in response["Messages"]:
           body = message["Body"]
           recphwnd = message["ReceiptHandle"]
-          #body = json.loads(body)
-          #body = json.loads(body["Message"])
           logger.info(body)
           for i in reversed(range(len(self.out_queues))):
             try:
@@ -62,7 +60,6 @@ class SqsBackend():
   def join(self, timeout=None):
     logger.info("Joining...")
     self.stoprequest.set()
-    #super(SqsBackend, self).join(timeout)
 
 def get_backend():
   global sqs_backend
@@ -73,6 +70,6 @@ def get_backend():
     else:
       logger.info("Creating new backend instance")
       sqs_backend = SqsBackend(
-        queueurl="https://sqs.ap-southeast-2.amazonaws.com/231965782596/test"
+        queueurl=config("queue")
       )
       return sqs_backend
